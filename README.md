@@ -49,12 +49,14 @@ CREATE TABLE dns (
 	'domain'  VARCHAR(255) NOT NULL PRIMARY KEY,
 	'address' VARCHAR(16) NOT NULL
 );
-
-INSERT INTO dns VALUES ('test.remote.demo.com', '1.2.3.4')
 ```
 
 Then insert your records there, and query them:
 
 ```
-dig @container_ip -p 10054 test.remote.demo.com
+# In MySQL
+INSERT INTO dns VALUES ('test.remote.demo.com', '1.2.3.4');
+
+# From the command line
+dig @container_ip -p 10053 test.remote.demo.com
 ```

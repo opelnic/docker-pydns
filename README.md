@@ -24,12 +24,12 @@ The configuration parameters can be given as environment variables:
   - **DB_USER**: the database username
   - **DB_PASSWD**: the database password
   - **DB_NAME**: The database name
-  - **DB_QUERY**: The query to perform to resolve the name. By default, *"SELECT address FROM dns WHERE query = %s"*
+  - **DB_QUERY**: The query to perform to resolve the name. By default, *"SELECT address FROM dns WHERE domain = %s"*
   - **DNS_TTL**: The TTL of A records
   - **DNS_HOSTS**: Path to the hosts file, defaults to */etc/hosts*
-  - **DNS_DOMAIN**: The subdomain for which the server is authoritative
+  - **DNS_DOMAIN**: The domain for which the server is authoritative
 
-These variables can also be provided in a configuration file in YAML format mounted in **/usr/src/app/config.yml**, like the following:
+These variables can also be provided in a configuration file in YAML format mounted at **/usr/src/app/config.yml**, like the following:
 
 ```
 ---
@@ -46,9 +46,12 @@ dns_domains:
   - "remote.demo.com"
 ```
 
-As shown above, the configuration file method allows you to specificy several DNS domains, instead of one. **Beware!** the environment parameter is **DNS_DOMAIN** (singular), while the config file parameter is **dns_domains** (plural)!
+As shown above, the configuration file method allows you to specificy several DNS domains, instead of only one. **Beware!** the environment parameter is **DNS_DOMAIN** (singular), while the config file parameter is **dns_domains** (plural)!
 
-For example, if you want to be authoritative for a domain "remote.demo.com", create a table "dns" in your mysql server such as:
+Usage
+------
+
+First, create a table "dns" in your mysql server, such as:
 
 ```
 CREATE TABLE dns (
@@ -57,16 +60,35 @@ CREATE TABLE dns (
 );
 ```
 
-Then insert your records there, and query them:
+Then insert your records:
 
 ```
-# In MySQL
-INSERT INTO dns VALUES ('test.remote.demo.com', '1.2.3.4');
+INSERT INTO dns VALUES ('test.demo.com', '1.2.3.4');
 
 # You can be recursive if you want, too
 INSERT INTO dns VALUES ('recursive.demo.com', 'www.google.es');
+```
 
-# From the command line
-dig @container_ip -p 10053 test.remote.demo.com
-dig @container_ip -p 10053 recursive.demo.com
+Then, run your server pointing to that table:
+
+```
+docker run --rm --name pydns \
+    -e DB_HOST=<your mysql server IP:Port> \
+    -e DB_USER=<your user> \
+    -e DB_PASSWD=<your passwd> \
+    -e DB_NAME=<the database name> \
+    -e DB_SQL="SELECT address FROM dns WHERE domain = %s" \
+    -e DNS_TTL=600 \
+    -e DNS_DOMAIN=demo.com \
+    -e DNS_HOSTS=/etc/hosts \
+    -p 10053:10053 \
+    -p 10053:10053/udp \
+    pydns
+```
+
+That is all, test it!
+
+```
+dig @127.0.0.1 -p 10053 test.demo.com
+dig @127.0.0.1 -p 10053 recursive.demo.com
 ```

@@ -156,11 +156,12 @@ class Config(object):
             return os.getenv(key.upper(), getter(key, default))
         self.db_driver   = top('db_driver',   'MySQLdb')
         self.db_host     = top('db_host',     '127.0.0.1')
+        self.db_port     = int(top('db_port',  3306))
         self.db_user     = top('db_user',     'root')
         self.db_passwd   = top('db_passwd',   'Changeme')
         self.db_name     = top('db_name',     'test')
         self.db_query    = top('db_query',    'SELECT address FROM dns WHERE domain = %s')
-        self.dns_ttl     = top('dns_ttl',     300)
+        self.dns_ttl     = int(top('dns_ttl',  300))
         self.dns_hosts   = top('dns_hosts',   '/etc/hosts')
         # dns_domains is special because the environment variable
         # name does not match the config variable name (environment
@@ -186,6 +187,7 @@ class Config(object):
         return dedent("""
         db_driver:   "{0.db_driver}"
         db_host:     "{0.db_host}"
+        db_port:     "{0.db_port}"
         db_user:     "{0.db_user}"
         db_password: ******
         db_name:     "{0.db_name}"
@@ -250,10 +252,11 @@ def main():
     # Build a connection lasting the lifetime of the service
     connection = adbapi.ConnectionPool(
         config.db_driver,
-        config.db_host,
-        config.db_user,
-        config.db_passwd,
-        config.db_name
+        host=config.db_host,
+        port=config.db_port,
+        user=config.db_user,
+        passwd=config.db_passwd,
+        db=config.db_name
     )
 
     # Build a global Resolver lasting the lifetime of the service

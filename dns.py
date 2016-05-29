@@ -59,8 +59,9 @@ class DynamicResolver(object):
         address     = ipaddress.ip_address(representation)
         record_type = None
         # Try to match the record to the representation
-        if address.version == 4 and query.type == dns.A:
-            record_type = dns.Record_A
+        if address.version == 4:
+            if query.type == dns.A:
+                record_type = dns.Record_A
         else:
             if query.type == dns.AAAA:
                 record_type = dns.Record_AAAA

@@ -20,7 +20,8 @@ The server connects to a database and expects request in ports 10053 TCP and UDP
 The configuration parameters can be given as environment variables:
 
   - **DB_DRIVER**: the DB-API driver, currently only *MySQLdb* packed in the container image.
-  - **DB_HOST**: the database server hostname (and port)
+  - **DB_HOST**: the database server hostname
+  - **DB_PORT**: the database server TCP port (defaults to 3306)
   - **DB_USER**: the database username
   - **DB_PASSWD**: the database password
   - **DB_NAME**: The database name
@@ -35,6 +36,7 @@ These variables can also be provided in a configuration file in YAML format moun
 ---
 db_driver:   "MySQLdb"
 db_host:     "mysqldb"
+db_port:      3306
 db_user:     "root"
 db_passwd:   "Changeme"
 db_name:     "test"
@@ -73,7 +75,8 @@ Then, run your server pointing to that table:
 
 ```
 docker run --rm --name pydns \
-    -e DB_HOST=<your mysql server IP:Port> \
+    -e DB_HOST=<your mysql server IP> \
+    -e DB_PORT=3306 \
     -e DB_USER=<your user> \
     -e DB_PASSWD=<your passwd> \
     -e DB_NAME=<the database name> \

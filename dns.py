@@ -97,6 +97,7 @@ class DynamicResolver(object):
             try:
                 record = self._doCreateRecord(query, name, representation)
                 promise.callback((answers, [record,], additional))
+                self._logger.debug("Replied with value {data}", data=record)
             # If not an IP address, resolve it recursively
             except ValueError:
                 query.name.name = representation

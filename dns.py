@@ -85,7 +85,7 @@ class DynamicResolver(object):
         name    = query.name.name
 
         # Get the info from the database and resolve it
-        def onResult(result, answers=[], additional=[]):
+        def onResult(result, additional=[]):
             if not result:
                 self._logger.info("{data}: No such domain", data=name)
                 promise.errback(error.DomainError())
@@ -96,7 +96,7 @@ class DynamicResolver(object):
                 data=representation)
             try:
                 record = self._doCreateRecord(query, name, representation)
-                promise.callback((answers, [record,], additional))
+                promise.callback(([record,], [record,], additional))
                 self._logger.debug("Replied with value {data}", data=record)
             # If not an IP address, resolve it recursively
             except ValueError:

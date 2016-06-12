@@ -107,13 +107,22 @@ class DynamicResolver(object):
                 entry.chainDeferred(promise)
             # If mistmatched query and address, return error
             except TypeError as err:
-                self._logger.failure("Mismatched address and query")
+                self._logger.warn("Mismatched address and query")
                 promise.errback(error.DomainError())
             
         # Error handler, propagates the error back
         def onError(err):
             self._logger.failure("SQL query failed", failure=err)
             promise.errback(err)
+            # If an SQL error happens, fail early as that is a sign
+            # that the db ConnectionPool has failed (it may happen
+            # because a long time of inactivity, see
+            # http://stackoverflow.com/questions/12677246/twisted-adbapi-cp-reconnect-not-working
+            #
+            # In that case, better to fail and let docker, systemd or
+            # whichever process manager is running this, to restart
+            # the service and get a nerw, fresh connection.
+            reactor.callFromThread(reactor.stop)
 
         # Run the query
         entry = self._connection.runQuery(self._config.db_query, [name])
@@ -258,7 +267,8 @@ def main():
         port=config.db_port,
         user=config.db_user,
         passwd=config.db_passwd,
-        db=config.db_name
+        db=config.db_name,
+        cp_reconnect=True
     )
 
     # Build a global Resolver lasting the lifetime of the service
@@ -281,7 +291,6 @@ def main():
     reactor.listenUDP(params.port, protocol)
     reactor.listenTCP(params.port, factory)
     reactor.run()
-
 
 
 if __name__ == '__main__':

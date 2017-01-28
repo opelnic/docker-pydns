@@ -19,13 +19,15 @@ The server connects to a database and expects request in ports 10053 TCP and UDP
 
 The configuration parameters can be given as environment variables:
 
-  - **DB_DRIVER**: the DB-API driver, currently only *MySQLdb* packed in the container image.
-  - **DB_HOST**: the database server hostname
-  - **DB_PORT**: the database server TCP port (defaults to 3306)
-  - **DB_USER**: the database username
-  - **DB_PASSWD**: the database password
+  - **DB_DRIVER**: The DB-API driver, currently only *MySQLdb* packed in the container image.
+  - **DB_HOST**: The database server hostname
+  - **DB_PORT**: The database server TCP port (defaults to 3306)
+  - **DB_USER**: The database username
+  - **DB_PASSWD**: The database password
   - **DB_NAME**: The database name
   - **DB_QUERY**: The query to perform to resolve the name. By default, *"SELECT address FROM dns WHERE domain = %s"*
+  - **POLL_QUERY**: A keepalive query, to run periodically to keep the connection awake
+  - **POLL_TIME**: Polling interval (seconds)
   - **DNS_TTL**: The TTL of A records
   - **DNS_HOSTS**: Path to the hosts file, defaults to */etc/hosts*
   - **DNS_DOMAIN**: The domain for which the server is authoritative
@@ -41,6 +43,8 @@ db_user:     "root"
 db_passwd:   "Changeme"
 db_name:     "test"
 db_query:    "SELECT address FROM dns WHERE domain = %s"
+poll_query:  "SELECT 1"
+poll_time:    30
 dns_ttl:      3600
 dns_hosts:   "/etc/hosts"
 dns_domains:
@@ -81,6 +85,8 @@ docker run --rm --name pydns \
     -e DB_PASSWD=<your passwd> \
     -e DB_NAME=<the database name> \
     -e DB_SQL="SELECT address FROM dns WHERE domain = %s" \
+    -e POLL_QUERY="SELECT 1" \
+    -e POLL_TIME=30 \
     -e DNS_TTL=600 \
     -e DNS_DOMAIN=demo.com \
     -e DNS_HOSTS=/etc/hosts \

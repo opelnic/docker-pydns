@@ -9,6 +9,7 @@ from twisted.internet import reactor, defer
 from twisted.names import client, dns, error, server, hosts, cache
 from twisted.python import log
 from twisted.logger import Logger, textFileLogObserver
+from twisted.internet.task import LoopingCall
 from twisted.enterprise import adbapi
 
 import yaml
@@ -149,6 +150,33 @@ class DynamicResolver(object):
         return defer.fail(error.DomainError())
 
 
+    def poll(self):
+        """Polls the database with a simple query"""
+
+        promise = defer.Deferred()
+
+        # Get the info from the database and resolve it
+        def onResult(result, additional=[]):
+            if not result:
+                self._logger.info("Database polling failed")
+                promise.errback(error.DomainError())
+            else:
+                self._logger.debug("Database polling successful")
+                promise.callback(result)
+
+        # Error handler, propagates the error back
+        def onError(err):
+            self._logger.failure("Database polling failed", failure=err)
+            promise.errback(err)
+
+        # Run the query
+        entry = self._connection.runQuery(self._config.poll_query)
+        entry.addCallbacks(onResult, onError)
+
+        # Return the promise
+        return promise
+
+
 class Config(object):
     """
     Loads the config file
@@ -174,6 +202,8 @@ class Config(object):
         self.db_query    = top('db_query',    'SELECT address FROM dns WHERE domain = %s')
         self.dns_ttl     = int(top('dns_ttl',  300))
         self.dns_hosts   = top('dns_hosts',   '/etc/hosts')
+        self.poll_query  = top('poll_query',  'SELECT 1;')
+        self.poll_time   = int(top('poll_time', 30))
         # dns_domains is special because the environment variable
         # name does not match the config variable name (environment
         # only allows for one domain)
@@ -198,11 +228,13 @@ class Config(object):
         return dedent("""
         db_driver:   "{0.db_driver}"
         db_host:     "{0.db_host}"
-        db_port:     "{0.db_port}"
+        db_port:      {0.db_port}
         db_user:     "{0.db_user}"
         db_password: ******
         db_name:     "{0.db_name}"
         db_query:    "{0.db_query}"
+        poll_query:  "{0.poll_query}"
+        poll_time:    {0.poll_time}
         dns_ttl:      {0.dns_ttl}
         dns_hosts:   "{0.dns_hosts}"
         dns_domains:
@@ -273,6 +305,7 @@ def main():
 
     # Build a global Resolver lasting the lifetime of the service
     resolver = client.createResolver()
+    customResolver = DynamicResolver(config, connection, resolver, logger)
 
     # Factory and protocol services
     factory  = server.DNSServerFactory(
@@ -282,10 +315,14 @@ def main():
         # Use "clients" instead of "authorities", so caching works
         clients=[
             hosts.Resolver(file=config.dns_hosts, ttl=config.dns_ttl),
-            DynamicResolver(config, connection, resolver, logger),
+            customResolver,
         ]
     )
     protocol = dns.DNSDatagramProtocol(controller=factory)
+
+    # Start polling loop, to avoid timeouts
+    poller = LoopingCall(customResolver.poll)
+    poller.start(config.poll_time)
 
     # Listen TCP and UDP
     reactor.listenUDP(params.port, protocol)
